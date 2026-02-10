@@ -6,20 +6,17 @@ import { verify } from "@/helpers/verify";
 
 export async function POST(req: Request) {
   const { username, email, password } = await req.json();
-  console.log({
-    username,
-    email,
-    password
-  })
 
   await connectDB();
 
   try {
-    const ISuser = await User.findOne({ username, isVerified: true });
+    const existingUserByUsername = await User.findOne({ username });
+    const existingUserByEmail = await User.findOne({ email });
 
-    console.log(ISuser)
-
-    if (ISuser) {
+    if (
+      existingUserByUsername &&
+      existingUserByUsername.email !== email
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -28,35 +25,33 @@ export async function POST(req: Request) {
         { status: 409 }
       );
     }
-    
 
-    const ISexitUserBYemail = await User.findOne({ email });
+    if (existingUserByEmail?.isVerified) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "This email is already registered"
+        },
+        { status: 409 }
+      );
+    }
 
     const VCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiryTime = new Date();
     expiryTime.setMinutes(expiryTime.getMinutes() + 30);
+    const hashedPassword = await bcryptjs.hash(password, 10);
 
-    if (ISexitUserBYemail) {
-      if (ISexitUserBYemail.isVerified) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: "This email is already registered"
-          },
-          { status: 409 }
-        );
-      } else {
-        ISexitUserBYemail.password = await bcryptjs.hash(password, 10);
-        ISexitUserBYemail.VCode = VCode;
-        ISexitUserBYemail.VCodeExpiration = expiryTime;
-        await ISexitUserBYemail.save();
-      }
+    if (existingUserByEmail) {
+      existingUserByEmail.username = username;
+      existingUserByEmail.password = hashedPassword;
+      existingUserByEmail.VCode = VCode;
+      existingUserByEmail.VCodeExpiration = expiryTime;
+      await existingUserByEmail.save();
     } else {
-      const HashPassword = await bcryptjs.hash(password, 10);
       const user = new User({
         username,
         email,
-        password: HashPassword,
+        password: hashedPassword,
         VCode,
         VCodeExpiration: expiryTime,
         isVerified: false,
