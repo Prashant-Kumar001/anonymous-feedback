@@ -1,7 +1,8 @@
-"use client";
-import { Message } from "@/models/User";
-import MessageCard from "@/components/cards";
-import { Loader2 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { Trash2, User, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Message } from "@/types/res.API";
+import MessageCard from "./cards";
 
 interface MessageListProps {
   messages: Message[];
@@ -9,32 +10,27 @@ interface MessageListProps {
   loading: boolean;
 }
 
-export default function MessageList({ messages, onDelete, loading }: MessageListProps) {
-
+export default function MessageList({
+  messages,
+  onDelete,
+  loading,
+}: MessageListProps) {
   if (loading) {
     return (
-      <div className="col-span-2 text-center py-6 text-muted-foreground flex justify-center ">
-        <Loader2 size={24} className="ml-2 animate-spin" />
-      </div>
-    );
-  }
-
-
-  if (messages.length === 0) {
-    return (
-      <div className="col-span-2 text-center py-6 text-muted-foreground">
-        <p className="mb-2">No messages yet 📨</p>
-        <p className="text-sm">
-          Share your profile link to start receiving messages
-        </p>
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-pulse space-y-4 w-full">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-gray-100 dark:bg-gray-700 h-20 rounded-lg" />
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {messages.map((message, index) => (
-        <MessageCard key={index} message={message} onDelete={onDelete} />
+    <div className="space-y-4">
+      {messages.map((message) => (
+       <MessageCard key={message._id} message={message} onDelete={onDelete} />
       ))}
     </div>
   );

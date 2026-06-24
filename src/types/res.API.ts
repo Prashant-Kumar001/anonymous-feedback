@@ -1,4 +1,9 @@
-import { Message } from '@/models/User'
+
+export interface Message {
+    _id: string,
+    content: string,
+    createAt: Date
+}
 
 export interface resAPI {
     success: boolean;

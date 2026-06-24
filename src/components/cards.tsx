@@ -19,10 +19,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { X } from "lucide-react";
-import { Message } from "@/models/User";
 import axios, { AxiosError } from "axios";
 import { toast } from "sonner";
-import { resAPI } from "@/types/res.API";
+import { Message, resAPI } from "@/types/res.API";
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -43,7 +42,7 @@ const MessageCard = ({
     try {
       const res = await axios.delete(`/api/messages/${message._id}`);
       toast.success(res.data.message ?? "Message deleted successfully");
-      onDelete(message._id as string); 
+      onDelete(message._id); 
     } catch (error) {
       const err = error as AxiosError<resAPI>;
       toast.error(err.response?.data?.error ?? "Failed to delete message");

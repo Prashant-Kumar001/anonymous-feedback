@@ -37,40 +37,64 @@ export default function SignIn() {
     defaultValues: { identifier: "", password: "" },
   });
 
-  const onSubmit = async (data: SignInValues) => {
-    console.log(data);
-    try {
-      const result = await signIn("credentials", {
+const onSubmit = async (data: SignInValues) => {
+  form.clearErrors("root");
+
+  try {
+    const checkRes = await fetch("/api/auth/pre-login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
         identifier: data.identifier,
-        password: data.password,
-        redirect: false,
-      });
+      }),
+    });
 
-      console.log(result);
-
-      if (result?.error) {
-        form.setError("root", { message: result.error });
-        toast.error(result.error);
+    const checkData = await checkRes.json();
+ 
+    if (!checkData.success) {
+      toast.error(checkData.message);
+      if (checkData.code === "UNVERIFIED_USER") {
+         router.push(
+        `/auth/verify/${checkData.username}?message=` +
+        encodeURIComponent(
+          "Registration successful! Please check your email."
+        )
+      );
+        return;
       }
 
-      if (result?.ok) {
-        router.push("/dashboard");
-      }
-
-      router.push("/dashboard");
-    } catch (err) {
-      const error = err as resAPI;
-      const message = error.message || "Sign-in failed";
-      form.setError("root", { message });
+      throw new Error(checkData.message);
     }
-  };
+
+    const result = await signIn("credentials", {
+      identifier: data.identifier,
+      password: data.password,
+      redirect: false,
+    });
+
+    if (!result?.ok) {
+      throw new Error(result?.error || "Invalid credentials");
+    }
+
+    toast.success("Signed in successfully");
+    router.push("/dashboard");
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Sign-in failed";
+
+    form.setError("root", { message });
+    toast.error(message);
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="max-w-md w-full mx-4">
         <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-linear-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <Key className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-gray-800 mb-2">Sign In</h1>

@@ -48,9 +48,13 @@ export const authOptions: NextAuthOptions = {
             return user;
           }
         } catch (err) {
-          const error = err as AxiosError<resAPI>;
+          console.log("Sign-in error:", err);
+          const error = err as string
+
+          console.log(error)
+
           const message =
-            error.response?.data?.message || "Authentication failed";
+            error || "Authentication failed";
           throw new Error(message);
         }
       },

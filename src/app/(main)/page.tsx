@@ -19,7 +19,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <section className="flex-1 flex flex-col items-center justify-center text-center px-6 py-20 bg-gradient-to-b from-indigo-50 to-white">
+      <section className="flex-1 flex flex-col items-center justify-center text-center px-6 py-20 bg-linear-to-b from-indigo-50 to-white">
         <h1 className="text-4xl md:text-6xl font-bold mb-4">
           Share Honestly, Stay Anonymous
         </h1>
