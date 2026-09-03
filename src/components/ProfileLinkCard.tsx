@@ -10,7 +10,7 @@ interface ProfileLinkCardProps {
 
 export default function ProfileLinkCard({ username }: ProfileLinkCardProps) {
   const [copied, setCopied] = useState(false);
-  const profileUrl = `${window.location.origin}/${username}`;
+  const profileUrl = `${window.location.origin}/u/${username}`;
 
   const handleCopy = async () => {
     try {

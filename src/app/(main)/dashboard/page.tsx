@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
 import axios, { AxiosError } from "axios";
 import { Message, resAPI } from "@/types/res.API";
@@ -9,7 +9,6 @@ import { Pagination } from "@/types/pagination";
 import DashboardHeader from "@/components/DashboardHeader";
 import MessageSection from "@/components/MessageSection";
 import SidebarSection from "@/components/SidebarSection";
-
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -20,6 +19,11 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSwitchLoading, setIsSwitchLoading] = useState(false);
   const [isExcepting, setIsExcepting] = useState(false);
+  
+  // Track if initial fetch has been done
+  const initialFetchDone = useRef(false);
+  // Track if component is mounted to prevent state updates after unmount
+  const isMounted = useRef(true);
 
   const handleDeleteMessage = useCallback((id: unknown) => {
     setMessages((prev) => prev.filter((msg) => msg._id !== id));
@@ -27,62 +31,125 @@ export default function DashboardPage() {
 
   const fetchMessages = useCallback(
     async (page: number = 1, limit: number = 10, refresh = false) => {
+      // Prevent multiple simultaneous requests
+      if (isLoading) return;
+      
       setIsLoading(true);
       try {
         const res = await axios.get(
           `/api/messages?page=${page}&limit=${limit}`
         );
-        setMessages(res.data.messages);
-        setPagination(res.data.pagination);
-        if (refresh) toast.success("Messages refreshed");
+        // Only update state if component is still mounted
+        if (isMounted.current) {
+          setMessages(res.data.messages);
+          setPagination(res.data.pagination);
+          if (refresh) toast.success("Messages refreshed");
+        }
       } catch (err) {
-        const error = err as AxiosError<resAPI>;
-        toast.error(error.response?.data?.message || "Failed to load messages");
+        if (isMounted.current) {
+          const error = err as AxiosError<resAPI>;
+          toast.error(error.response?.data?.message || "Failed to load messages");
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted.current) {
+          setIsLoading(false);
+        }
       }
     },
-    []
+    [isLoading] // Add isLoading to dependencies
   );
 
   const fetchToggle = useCallback(async () => {
+    // Prevent multiple simultaneous requests
+    if (isSwitchLoading) return;
+    
     setIsSwitchLoading(true);
     try {
       const res = await axios.get("/api/except");
-      setIsExcepting(res.data?.data.isExcepting);
+      if (isMounted.current) {
+        setIsExcepting(res.data?.data.isExcepting);
+      }
     } catch (err) {
-      const error = err as AxiosError<resAPI>;
-      toast.error(error.response?.data?.message || "Failed to fetch toggle");
+      if (isMounted.current) {
+        const error = err as AxiosError<resAPI>;
+        toast.error(error.response?.data?.message || "Failed to fetch toggle");
+      }
     } finally {
-      setIsSwitchLoading(false);
+      if (isMounted.current) {
+        setIsSwitchLoading(false);
+      }
     }
-  }, []);
+  }, [isSwitchLoading]); // Add isSwitchLoading to dependencies
 
   const handleSwitch = useCallback(async () => {
+    // Prevent multiple toggles while one is in progress
+    if (isSwitchLoading) return;
+    
     setIsSwitchLoading(true);
     try {
       const res = await axios.post("/api/except", {
         isExcepting: !isExcepting,
       });
-      setIsExcepting(!isExcepting);
-      toast.success(res.data.message || "Toggled successfully");
+      if (isMounted.current) {
+        setIsExcepting(!isExcepting);
+        toast.success(res.data.message || "Toggled successfully");
+      }
     } catch (err) {
-      const error = err as AxiosError<resAPI>;
-      toast.error(error.response?.data?.message || "Failed to toggle");
+      if (isMounted.current) {
+        const error = err as AxiosError<resAPI>;
+        toast.error(error.response?.data?.message || "Failed to toggle");
+      }
     } finally {
-      setIsSwitchLoading(false);
+      if (isMounted.current) {
+        setIsSwitchLoading(false);
+      }
     }
-  }, [isExcepting]);
+  }, [isExcepting, isSwitchLoading]);
 
   const handlePageChange = (newPage: number) => {
-    if (pagination) fetchMessages(newPage, pagination.limit);
+    if (pagination && !isLoading) {
+      fetchMessages(newPage, pagination.limit);
+    }
   };
 
   useEffect(() => {
-    if (!session?.user) return;
-    fetchMessages();
-    fetchToggle();
-  }, [session, fetchMessages, fetchToggle]);
+    // Set mounted flag
+    isMounted.current = true;
+    
+    // Only fetch if user is authenticated and we haven't fetched yet
+    if (status === "authenticated" && session?.user && !initialFetchDone.current) {
+      initialFetchDone.current = true;
+      fetchMessages();
+      fetchToggle();
+    }
+    
+    // Cleanup
+    return () => {
+      isMounted.current = false;
+    };
+  }, [status, session?.user, fetchMessages, fetchToggle]);
+
+  // Separate effect to handle status changes
+  useEffect(() => {
+    // Reset initial fetch flag when user logs out
+    if (status === "unauthenticated") {
+      initialFetchDone.current = false;
+      setMessages([]);
+      setPagination(null);
+    }
+  }, [status]);
+
+  // Show loading state while checking authentication
+  if (status === "loading") {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="text-gray-400 mt-4">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!session?.user || status !== "authenticated") {
     return (

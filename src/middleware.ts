@@ -10,7 +10,6 @@ export default withAuth(
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl;
 
-        // Public routes
         if (
           pathname.startsWith("/auth") ||
           pathname === "/" ||
